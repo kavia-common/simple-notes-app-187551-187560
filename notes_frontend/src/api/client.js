@@ -28,6 +28,22 @@ async function extractErrorMessage(res, fallbackPrefix) {
 }
 
 /**
+ * Map network errors into a concise, user-friendly message that avoids exposing raw internals.
+ */
+function friendlyNetworkError(prefix) {
+  return `${prefix}: could not reach the server. Check that the backend is running at ${BASE_URL} and that your browser is allowed by CORS.`;
+}
+
+/**
+ * Safely join base URL and path, avoiding double slashes (but keep protocol double-slash).
+ */
+function joinUrl(path) {
+  const url = `${BASE_URL}${path}`;
+  // Replace multiple slashes with single slash, but ignore the "http(s)://" part
+  return url.replace(/(?<!:)\/{2,}/g, '/');
+}
+
+/**
  * Wrap fetch to provide consistent error handling including network errors (TypeError)
  */
 async function doFetch(url, options, failurePrefix) {
@@ -41,7 +57,7 @@ async function doFetch(url, options, failurePrefix) {
   } catch (err) {
     // Network error or CORS failure often appears as TypeError: Failed to fetch
     if (err && err.name === 'TypeError') {
-      throw new Error(`${failurePrefix}: network error or CORS issue. ${err.message}`);
+      throw new Error(friendlyNetworkError(failurePrefix));
     }
     throw err;
   }
@@ -49,16 +65,18 @@ async function doFetch(url, options, failurePrefix) {
 
 // PUBLIC_INTERFACE
 export async function apiGet(path) {
-  /** Perform GET request to backend. Returns parsed JSON or throws. */
-  const res = await doFetch(`${BASE_URL}${path}`, { headers: { 'Content-Type': 'application/json' } }, `GET ${path} failed`);
+  /** PUBLIC_INTERFACE: Perform GET request to backend. Returns parsed JSON or throws. */
+  const url = joinUrl(path);
+  const res = await doFetch(url, { headers: { 'Content-Type': 'application/json' } }, `GET ${path} failed`);
   return res.json();
 }
 
 // PUBLIC_INTERFACE
 export async function apiPost(path, body) {
-  /** Perform POST request with JSON body. */
+  /** PUBLIC_INTERFACE: Perform POST request with JSON body. */
+  const url = joinUrl(path);
   const res = await doFetch(
-    `${BASE_URL}${path}`,
+    url,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,9 +89,10 @@ export async function apiPost(path, body) {
 
 // PUBLIC_INTERFACE
 export async function apiPut(path, body) {
-  /** Perform PUT request with JSON body. */
+  /** PUBLIC_INTERFACE: Perform PUT request with JSON body. */
+  const url = joinUrl(path);
   const res = await doFetch(
-    `${BASE_URL}${path}`,
+    url,
     {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -86,8 +105,9 @@ export async function apiPut(path, body) {
 
 // PUBLIC_INTERFACE
 export async function apiDelete(path) {
-  /** Perform DELETE request. Returns parsed JSON if any or empty object. */
-  const res = await doFetch(`${BASE_URL}${path}`, { method: 'DELETE' }, `DELETE ${path} failed`);
+  /** PUBLIC_INTERFACE: Perform DELETE request. Returns parsed JSON if any or empty object. */
+  const url = joinUrl(path);
+  const res = await doFetch(url, { method: 'DELETE' }, `DELETE ${path} failed`);
   try {
     return await res.json();
   } catch {

@@ -10,7 +10,9 @@ dotenv.config();
 
 // Configuration with sensible defaults
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
-const BASE_PATH = (process.env.BASE_PATH || '/api').replace(/\/*$/, '') || '/api';
+// Normalize BASE_PATH: strip trailing slashes, ensure starts with "/"
+const rawBase = (process.env.BASE_PATH || '/api').trim();
+const BASE_PATH = ('/' + rawBase.replace(/^\/+/, '')).replace(/\/*$/, '') || '/api';
 // CORS origin driven by FRONTEND_URL; default to localhost:3000
 const FRONTEND_URL =
   process.env.FRONTEND_URL || process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
@@ -26,20 +28,28 @@ if (TRUST_PROXY) {
   app.set('trust proxy', 1);
 }
 app.use(helmet());
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-  })
-);
-// Ensure preflight for all routes under BASE_PATH responds properly
-app.options('*', cors({ origin: FRONTEND_URL, credentials: true }));
+
+// Define strict CORS options per requirements
+const corsOptions = {
+  origin: FRONTEND_URL || 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+// Register JSON parser BEFORE routes
+app.use(express.json({ limit: '256kb' }));
+
+// Apply CORS for all requests
+app.use(cors(corsOptions));
+// Ensure preflight for API routes responds properly
+app.options(`${BASE_PATH}/*`, cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Logging
 app.use(morgan(LOG_LEVEL));
-
-// Body parsing
-app.use(express.json({ limit: '256kb' }));
 
 /**
  * PUBLIC_INTERFACE
@@ -57,8 +67,8 @@ app.get(HEALTH_PATH, (req, res) => {
   });
 });
 
-// Mount API routers
-app.use(BASE_PATH + '/notes', notesRouter);
+// Mount API routers explicitly at {BASE_PATH}/notes
+app.use(`${BASE_PATH}/notes`, notesRouter);
 
 // Root welcome
 app.get('/', (req, res) => {
