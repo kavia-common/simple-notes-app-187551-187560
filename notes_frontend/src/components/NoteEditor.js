@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { renderMarkdownToHtml } from '../utils/markdown';
 
 // PUBLIC_INTERFACE
 export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
@@ -9,9 +10,11 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
    * - onSave: (payload) => Promise
    * - onCancel: () => void
    * - saving: boolean
+   * Adds a markdown preview toggle for content.
    */
   const [title, setTitle] = useState(initialValue?.title || '');
   const [content, setContent] = useState(initialValue?.content || '');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     setTitle(initialValue?.title || '');
@@ -23,15 +26,28 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
     await onSave?.({ title: title.trim(), content: content.trim() });
   };
 
+  const previewHtml = useMemo(() => renderMarkdownToHtml(content), [content]);
+
   return (
     <form className="card" onSubmit={handleSubmit} aria-label="Note editor">
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
         <h2 className="page-title" style={{ margin: 0 }}>Editor</h2>
-        {onCancel && (
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            Cancel
+        <div className="row">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowPreview((v) => !v)}
+            aria-pressed={showPreview}
+            aria-label="Toggle preview"
+          >
+            {showPreview ? 'Hide Preview' : 'Show Preview'}
           </button>
-        )}
+          {onCancel && (
+            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ display: 'grid', gap: 10 }}>
         <label>
@@ -46,12 +62,21 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
         </label>
         <label>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Content</div>
-          <textarea
-            className="textarea"
-            placeholder="Write your note..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
+          {!showPreview ? (
+            <textarea
+              className="textarea"
+              placeholder="Write your note... (supports basic Markdown: #, **bold**, *italic*, `code`, [link](https://))"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+          ) : (
+            <div
+              className="textarea"
+              style={{ minHeight: 200, overflowY: 'auto' }}
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+              aria-label="Markdown preview"
+            />
+          )}
         </label>
       </div>
       <div className="row-right" style={{ marginTop: 12 }}>

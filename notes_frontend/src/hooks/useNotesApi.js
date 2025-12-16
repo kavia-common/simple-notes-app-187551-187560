@@ -2,26 +2,28 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import NotesApi from '../api/client';
 
 // PUBLIC_INTERFACE
-export function useNotesList() {
+export function useNotesList(params = {}) {
   /**
    * Hook to load the list of notes with loading/error states and a reload method.
+   * Accepts params: { q, sort, order }
    */
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (overrideParams) => {
+    const effective = { ...params, ...(overrideParams || {}) };
     setLoading(true);
     setError('');
     try {
-      const res = await NotesApi.list();
+      const res = await NotesApi.list(effective);
       setData(Array.isArray(res) ? res : (res?.data ?? []));
     } catch (e) {
       setError(e?.message || 'Failed to load notes.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [params?.q, params?.sort, params?.order]); // reload when inputs change
 
   useEffect(() => { load(); }, [load]);
 

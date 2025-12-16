@@ -1,15 +1,24 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import NoteList from '../components/NoteList';
 import { useNotesList } from '../hooks/useNotesApi';
+import NotesApi from '../api/client';
 
 // PUBLIC_INTERFACE
 export default function NotesPage() {
   /**
    * List page: shows all notes, loading and error states, delete with confirm.
+   * Adds search and sort controls wired to backend via q, sort, order.
    */
-  const { data, loading, error, reload, setData } = useNotesList();
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState('updatedAt');
+  const [order, setOrder] = useState('desc');
+
+  const params = useMemo(() => ({ q, sort, order }), [q, sort, order]);
+  const { data, loading, error, reload, setData } = useNotesList(params);
   const [deletingId, setDeletingId] = useState(null);
+
+  const clearSearch = () => setQ('');
 
   const onDelete = useCallback(async (note) => {
     if (!note?.id) return;
@@ -19,20 +28,11 @@ export default function NotesPage() {
     try {
       // optimistic update
       setData((prev) => prev.filter((n) => n.id !== note.id));
-      const res = await fetch(`${window.location.origin}/noop`, { method: 'HEAD' }).catch(() => null);
-      // ignore, just to yield microtask
-      await fetch('', { method: 'HEAD' }).catch(() => null);
-    } catch {}
-    // We'll rely on backend call via hook to ensure consistency
-    try {
-      await fetch('', { method: 'HEAD' }).catch(() => null);
-    } catch {}
-    try {
-      // call backend delete indirectly by refetch to keep code simple here
-      // Prefer direct API remove but we don't have it injected here; using reload after NoteList optimistic change
-      // If server fails, reload will re-sync
-      await reload();
+      await NotesApi.remove(note.id);
+    } catch {
+      // If backend delete fails, fall back to reloading
     } finally {
+      await reload();
       setDeletingId(null);
     }
   }, [reload, setData]);
@@ -45,24 +45,61 @@ export default function NotesPage() {
           <Link className="btn" to="/new">New Note</Link>
         </div>
 
+        <div className="row" style={{ marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input
+              className="input"
+              type="search"
+              placeholder="Search title or content…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Search notes"
+            />
+          </div>
+          {q && (
+            <button className="btn btn-secondary" type="button" onClick={clearSearch} aria-label="Clear search">
+              Clear
+            </button>
+          )}
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 600 }}>Sort</span>
+              <select
+                className="input"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                aria-label="Sort field"
+                style={{ width: 150 }}
+              >
+                <option value="updatedAt">Updated</option>
+                <option value="createdAt">Created</option>
+                <option value="title">Title</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 600 }}>Order</span>
+              <select
+                className="input"
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+                aria-label="Sort order"
+                style={{ width: 120 }}
+              >
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
         {loading && <div className="state loading" role="status">Loading notes…</div>}
         {error && <div className="state error" role="alert">{error}</div>}
         {!loading && !error && (
           <NoteList
             notes={data}
-            onDelete={async (n) => {
-              const ok = window.confirm(`Delete note "${n.title || 'Untitled'}"?`);
-              if (!ok) return;
-              setDeletingId(n.id);
-              try {
-                // optimistic update
-                setData((prev) => prev.filter((x) => x.id !== n.id));
-                // Try backend delete; if hook existed here we would call it. For now, force reload to sync.
-                await reload();
-              } finally {
-                setDeletingId(null);
-              }
-            }}
+            onDelete={onDelete}
           />
         )}
         {deletingId && <div className="state" style={{ marginTop: 10 }}>Deleting…</div>}

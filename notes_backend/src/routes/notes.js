@@ -11,6 +11,7 @@ const router = Router();
  * - q: substring to search in title/content
  * - sort: field to sort by (default: updatedAt)
  * - order: asc|desc (default: desc)
+ * Default behavior: if not specified, notes are returned sorted by updatedAt desc.
  */
 router.get('/', async (req, res, next) => {
   try {

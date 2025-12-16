@@ -62,10 +62,25 @@ export async function apiDelete(path) {
   }
 }
 
+/**
+ * Build query string from parameters, omitting empty values.
+ */
+function buildQuery(params = {}) {
+  const usp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    const val = String(v).trim();
+    if (val !== '') usp.set(k, val);
+  });
+  const qs = usp.toString();
+  return qs ? `?${qs}` : '';
+}
+
 // PUBLIC_INTERFACE
 export const NotesApi = {
   /** Notes CRUD api helpers */
-  list: () => apiGet('/notes'),
+  list: ({ q, sort = 'updatedAt', order = 'desc' } = {}) =>
+    apiGet(`/notes${buildQuery({ q, sort, order })}`),
   get: (id) => apiGet(`/notes/${id}`),
   create: (payload) => apiPost('/notes', payload),
   update: (id, payload) => apiPut(`/notes/${id}`, payload),
