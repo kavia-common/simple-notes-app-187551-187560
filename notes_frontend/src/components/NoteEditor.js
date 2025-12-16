@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { renderMarkdownToHtml } from '../utils/markdown';
 
 // PUBLIC_INTERFACE
-export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
+export default function NoteEditor({ initialValue, onSave, onCancel, saving, serverError }) {
   /**
    * Note editor for creating/updating a note.
    * Props:
@@ -10,11 +10,13 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
    * - onSave: (payload) => Promise
    * - onCancel: () => void
    * - saving: boolean
+   * - serverError: optional string error to display from parent/backend
    * Adds a markdown preview toggle for content.
    */
   const [title, setTitle] = useState(initialValue?.title || '');
   const [content, setContent] = useState(initialValue?.content || '');
   const [showPreview, setShowPreview] = useState(false);
+  const [localError, setLocalError] = useState('');
 
   useEffect(() => {
     setTitle(initialValue?.title || '');
@@ -23,10 +25,17 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await onSave?.({ title: title.trim(), content: content.trim() });
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setLocalError('Title is required.');
+      return;
+    }
+    setLocalError('');
+    await onSave?.({ title: trimmedTitle, content: content.trim() });
   };
 
   const previewHtml = useMemo(() => renderMarkdownToHtml(content), [content]);
+  const combinedError = localError || serverError;
 
   return (
     <form className="card" onSubmit={handleSubmit} aria-label="Note editor">
@@ -49,6 +58,11 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
           )}
         </div>
       </div>
+      {combinedError && (
+        <div className="state error" role="alert" style={{ marginBottom: 10 }}>
+          {combinedError}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 10 }}>
         <label>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Title</div>
@@ -58,6 +72,8 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
+            aria-invalid={Boolean(localError)}
+            required
           />
         </label>
         <label>
@@ -80,7 +96,7 @@ export default function NoteEditor({ initialValue, onSave, onCancel, saving }) {
         </label>
       </div>
       <div className="row-right" style={{ marginTop: 12 }}>
-        <button type="submit" className="btn" disabled={saving}>
+        <button type="submit" className="btn" disabled={saving || !title.trim()}>
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>

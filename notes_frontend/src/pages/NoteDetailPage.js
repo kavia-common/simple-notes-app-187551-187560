@@ -16,9 +16,11 @@ export default function NoteDetailPage({ isNew: forcedNew }) {
   const { note, setNote, loading, error, isNew, save, remove } = useNoteDetail(id);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const handleSave = async (payload) => {
     setSaving(true);
+    setServerError('');
     try {
       if (isNew) {
         const created = await NotesApi.create(payload);
@@ -27,8 +29,10 @@ export default function NoteDetailPage({ isNew: forcedNew }) {
         await save(payload);
         navigate('/', { replace: true });
       }
-    } catch {
-      // error already handled in hook/api
+    } catch (e) {
+      // Prefer backend error message if available in our thrown Error text
+      const msg = e?.message || 'Failed to save note.';
+      setServerError(msg);
     } finally {
       setSaving(false);
     }
@@ -70,6 +74,7 @@ export default function NoteDetailPage({ isNew: forcedNew }) {
             onSave={handleSave}
             onCancel={() => navigate(-1)}
             saving={saving}
+            serverError={serverError}
           />
         )}
       </div>
