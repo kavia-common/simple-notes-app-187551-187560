@@ -31,7 +31,7 @@ async function extractErrorMessage(res, fallbackPrefix) {
  * Map network errors into a concise, user-friendly message that avoids exposing raw internals.
  */
 function friendlyNetworkError(prefix) {
-  return `${prefix}: could not reach the server. Check that the backend is running at ${BASE_URL} and that your browser is allowed by CORS.`;
+  return `${prefix}: network unreachable or blocked by CORS. API base: ${BASE_URL}`;
 }
 
 /**

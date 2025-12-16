@@ -29,9 +29,37 @@ if (TRUST_PROXY) {
 }
 app.use(helmet());
 
+/**
+ * Normalize origins list: accept comma-separated env var or single value.
+ */
+function parseOrigins(input) {
+  const arr = String(input || '').split(',').map(s => s.trim()).filter(Boolean);
+  return arr.map(o => o.replace(/\/*$/, '')); // strip trailing slashes
+}
+
+// Compute backend origin for self-allow (some clients send Origin=backend on same-host calls)
+const BACKEND_PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
+const PROTOCOL = (process.env.PROTOCOL || process.env.REACT_APP_PROTOCOL || 'http').replace(':','');
+const HOST = process.env.HOST || process.env.REACT_APP_HOST || 'localhost';
+const BACKEND_ORIGIN = `${PROTOCOL}://${HOST}${BACKEND_PORT ? `:${BACKEND_PORT}` : ''}`;
+
+// Allow list includes FRONTEND_URL plus backend origin
+const allowedOrigins = new Set([
+  ...parseOrigins(FRONTEND_URL || 'http://localhost:3000'),
+  BACKEND_ORIGIN.replace(/\/*$/, ''),
+]);
+
 // Define strict CORS options per requirements
 const corsOptions = {
-  origin: FRONTEND_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // In case of same-origin or non-browser requests (no Origin), allow
+    if (!origin) return callback(null, true);
+    const norm = origin.replace(/\/*$/, '');
+    if (allowedOrigins.has(norm)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS: origin not allowed: ${origin}`), false);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false,
