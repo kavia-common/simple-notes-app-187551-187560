@@ -10,6 +10,9 @@ export function getApiBaseUrl() {
    *
    * Note: Backend healthcheck is at /health (e.g., http://localhost:4000/health) and
    * is not part of API base. API requests are made relative to the API base (e.g., /notes).
+   *
+   * This matches the integration requirement: prefer REACT_APP_API_BASE,
+   * then REACT_APP_BACKEND_URL, then default to http://localhost:4000/api.
    */
   const base =
     process.env.REACT_APP_API_BASE ||

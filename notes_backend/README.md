@@ -5,7 +5,7 @@ A minimal Express backend for the Simple Notes App. Uses a small JSON file for s
 ## Features
 - Express server with Helmet, CORS, and logging (morgan)
 - Configurable BASE_PATH (defaults to `/api`)
-- Health endpoint at `/health`
+- Health endpoint at `/health` (configurable via REACT_APP_HEALTHCHECK_PATH)
 - Notes CRUD mounted at `{BASE_PATH}/notes`
 - File-based storage with search (q) and sorting, timestamps (createdAt/updatedAt)
 - Centralized error handling with proper status codes
@@ -30,12 +30,13 @@ The server listens on PORT (default 4000).
 
 - PORT=4000
 - BASE_PATH=/api
-- FRONTEND_URL=http://localhost:3000
+- FRONTEND_URL=http://localhost:3000  (CORS origin; this is read by the server)
+- REACT_APP_HEALTHCHECK_PATH=/health   (path for health endpoint)
 
 Extended variables are included for compatibility with shared tooling:
 - REACT_APP_API_BASE, REACT_APP_BACKEND_URL, REACT_APP_FRONTEND_URL, etc.
 
-See .env.example for a comprehensive list.
+See `.env.example` for a comprehensive list.
 
 ## Endpoints
 
@@ -66,6 +67,7 @@ Exposed methods: `db.list({q,sort,order})`, `db.get(id)`, `db.create({title,cont
 The frontend defaults to `http://localhost:4000/api` as its API base. Ensure this backend is running with:
 - PORT=4000
 - BASE_PATH=/api
+- FRONTEND_URL=http://localhost:3000  (or your frontend origin)
 
 so that the frontend can reach:
 - GET http://localhost:4000/api/notes
