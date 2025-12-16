@@ -11,9 +11,13 @@ A lightweight React app for a simple notes application. Users can create, edit, 
 
 ## Environment
 The API base URL is resolved in the following order:
-1. `REACT_APP_API_BASE`
-2. `REACT_APP_BACKEND_URL`
+1. `REACT_APP_API_BASE` (preferred)
+2. `REACT_APP_BACKEND_URL` (fallback)
 3. Defaults to `http://localhost:4000/api`
+
+Healthcheck:
+- Backend exposes a health endpoint at `/health`. With defaults, it's available at `http://localhost:4000/health`.
+- This frontend does not call the healthcheck automatically; use it to verify backend availability manually.
 
 See `.env.example` for variables supported by this project.
 

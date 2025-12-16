@@ -66,6 +66,7 @@ app.get('/', (req, res) => {
 - Health: ${HEALTH_PATH}
 - API Base: ${BASE_PATH}
 - Notes: ${BASE_PATH}/notes
+- CORS Origin: ${FRONTEND_URL}
 `);
 });
 
