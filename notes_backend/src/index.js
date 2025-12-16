@@ -10,8 +10,10 @@ dotenv.config();
 
 // Configuration with sensible defaults
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
-const BASE_PATH = (process.env.BASE_PATH || '/api').replace(/\/+$/, '') || '/api';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const BASE_PATH = (process.env.BASE_PATH || '/api').replace(/\/*$/, '') || '/api';
+// CORS origin driven by FRONTEND_URL; default to localhost:3000
+const FRONTEND_URL =
+  process.env.FRONTEND_URL || process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 const TRUST_PROXY = (process.env.REACT_APP_TRUST_PROXY || 'false').toLowerCase() === 'true';
 const LOG_LEVEL = process.env.REACT_APP_LOG_LEVEL || 'dev';
 const HEALTH_PATH = process.env.REACT_APP_HEALTHCHECK_PATH || '/health';
@@ -24,10 +26,12 @@ if (TRUST_PROXY) {
   app.set('trust proxy', 1);
 }
 app.use(helmet());
-app.use(cors({
-  origin: FRONTEND_URL,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+  })
+);
 
 // Logging
 app.use(morgan(LOG_LEVEL));
@@ -47,7 +51,7 @@ app.get(HEALTH_PATH, (req, res) => {
     status: 'ok',
     service: 'notes_backend',
     timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.round(process.uptime())
+    uptimeSeconds: Math.round(process.uptime()),
   });
 });
 
@@ -56,7 +60,9 @@ app.use(BASE_PATH + '/notes', notesRouter);
 
 // Root welcome
 app.get('/', (req, res) => {
-  res.type('text/plain').send(`Notes Backend is running.
+  res
+    .type('text/plain')
+    .send(`Notes Backend is running.
 - Health: ${HEALTH_PATH}
 - API Base: ${BASE_PATH}
 - Notes: ${BASE_PATH}/notes
@@ -71,10 +77,24 @@ app.use((req, res) => {
 // Error handler
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  // Basic centralized error handler
-  console.error('[ERROR]', err);
-  const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Internal Server Error' });
+  // Centralized error handler: normalize payloads and honor status
+  const status = err && Number.isInteger(err.status) ? err.status : 500;
+  const message = err?.message || 'Internal Server Error';
+
+  const payload = { error: message };
+  if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
+    if (err && err.code) payload.code = err.code;
+    if (err && err.stack) payload.stack = err.stack;
+  }
+
+  // Log server-side
+  if (status >= 500) {
+    console.error('[ERROR]', err);
+  } else {
+    console.warn('[WARN]', message);
+  }
+
+  res.status(status).json(payload);
 });
 
 // Start server

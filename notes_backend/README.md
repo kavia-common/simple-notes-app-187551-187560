@@ -1,13 +1,14 @@
 # Notes Backend (Node + Express)
 
-A minimal Express backend for the Simple Notes App. Uses a small JSON file for storage (scaffold). This step sets up the server, middleware, health endpoint, and a notes route scaffold (CRUD to be implemented in the next step).
+A minimal Express backend for the Simple Notes App. Uses a small JSON file for storage. Provides full CRUD with validation, timestamps, search and sorting.
 
-## Features (Current)
+## Features
 - Express server with Helmet, CORS, and logging (morgan)
 - Configurable BASE_PATH (defaults to `/api`)
 - Health endpoint at `/health`
-- Notes route scaffold mounted at `{BASE_PATH}/notes`
-- Simple file-based storage module scaffold
+- Notes CRUD mounted at `{BASE_PATH}/notes`
+- File-based storage with search (q) and sorting, timestamps (createdAt/updatedAt)
+- Centralized error handling with proper status codes
 
 ## Quickstart
 
@@ -39,16 +40,21 @@ See .env.example for a comprehensive list.
 ## Endpoints
 
 - GET /health — service health
-- GET {BASE_PATH}/notes — list notes (currently returns an array, empty on first run)
-- Other CRUD routes are scaffolded and return 501 Not Implemented for now:
-  - POST {BASE_PATH}/notes
-  - GET {BASE_PATH}/notes/:id
-  - PUT {BASE_PATH}/notes/:id
-  - DELETE {BASE_PATH}/notes/:id
+- GET {BASE_PATH}/notes — list notes, supports:
+  - q: substring search across title/content
+  - sort: sort field (default: updatedAt)
+  - order: asc|desc (default: desc)
+- POST {BASE_PATH}/notes — create note
+  - body: { title: string (required), content?: string }
+- GET {BASE_PATH}/notes/:id — get single note
+- PUT {BASE_PATH}/notes/:id — update note
+  - body: { title?: string (if provided must be non-empty), content?: string }
+- DELETE {BASE_PATH}/notes/:id — delete note
 
 ## Storage
 
-The storage uses a JSON file at `data/notes.json` inside this container. The storage module exposes `db.list()` currently; additional methods will be implemented in the next step.
+The storage uses a JSON file at `data/notes.json` inside this container.
+Exposed methods: `db.list({q,sort,order})`, `db.get(id)`, `db.create({title,content})`, `db.update(id, {title,content})`, `db.remove(id)`.
 
 ## Scripts
 
