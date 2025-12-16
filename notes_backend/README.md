@@ -71,3 +71,12 @@ The frontend defaults to `http://localhost:4000/api` as its API base. Ensure thi
 
 so that the frontend can reach:
 - GET http://localhost:4000/api/notes
+
+CORS:
+- This server enables CORS for `FRONTEND_URL` and responds to preflight OPTIONS requests.
+- If you use a different frontend origin, set `FRONTEND_URL` accordingly.
+
+Test locally:
+- Health: `curl -s http://localhost:4000/health`
+- List notes: `curl -s http://localhost:4000/api/notes`
+- Create: `curl -s -X POST http://localhost:4000/api/notes -H "Content-Type: application/json" -d '{"title":"Test","content":"Hello"}'`

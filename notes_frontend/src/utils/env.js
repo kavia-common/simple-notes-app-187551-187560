@@ -1,23 +1,38 @@
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 
+/**
+ * Normalize a base URL by removing trailing slashes.
+ */
+function normalizeBase(base) {
+  return (base || '').replace(/\/*$/, '');
+}
+
 // PUBLIC_INTERFACE
 export function getApiBaseUrl() {
   /**
    * Returns API base URL from env vars in priority order:
    * 1) REACT_APP_API_BASE
    * 2) REACT_APP_BACKEND_URL
-   * Fallback: http://localhost:4000/api
+   * Fallbacks:
+   *   a) If running in browser and envs are undefined, derive from window.location:
+   *      - same origin + '/api' (assumes backend is reverse-proxied at /api)
+   *   b) Default to http://localhost:4000/api (dev)
    *
-   * Note: Backend healthcheck is at /health (e.g., http://localhost:4000/health) and
-   * is not part of API base. API requests are made relative to the API base (e.g., /notes).
-   *
-   * This matches the integration requirement: prefer REACT_APP_API_BASE,
-   * then REACT_APP_BACKEND_URL, then default to http://localhost:4000/api.
+   * This prevents generic "failed to fetch" when env is missing in production builds.
    */
-  const base =
+  const envBase =
     process.env.REACT_APP_API_BASE ||
-    process.env.REACT_APP_BACKEND_URL ||
-    DEFAULT_API_BASE;
-  // Strip trailing slashes
-  return (base || '').replace(/\/+$/, '');
+    process.env.REACT_APP_BACKEND_URL;
+
+  if (envBase) {
+    return normalizeBase(envBase);
+  }
+
+  // Derive from browser location if available (prod build without envs)
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return normalizeBase(`${window.location.origin}/api`);
+  }
+
+  // Final fallback for tests/dev node-like environments
+  return normalizeBase(DEFAULT_API_BASE);
 }

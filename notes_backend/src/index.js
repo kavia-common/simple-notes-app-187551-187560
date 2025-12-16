@@ -32,6 +32,8 @@ app.use(
     credentials: true,
   })
 );
+// Ensure preflight for all routes under BASE_PATH responds properly
+app.options('*', cors({ origin: FRONTEND_URL, credentials: true }));
 
 // Logging
 app.use(morgan(LOG_LEVEL));

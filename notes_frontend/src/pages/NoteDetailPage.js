@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import NoteEditor from '../components/NoteEditor';
 import { useNoteDetail } from '../hooks/useNotesApi';
-import NotesApi from '../api/client';
 
 // PUBLIC_INTERFACE
 export default function NoteDetailPage({ isNew: forcedNew }) {
@@ -22,15 +21,17 @@ export default function NoteDetailPage({ isNew: forcedNew }) {
     setSaving(true);
     setServerError('');
     try {
-      if (isNew) {
-        const created = await NotesApi.create(payload);
-        navigate(`/notes/${created.id}`, { replace: true });
+      // Delegate to hook's save which properly awaits create/update and sets state
+      const result = await save(payload);
+      if (isNew && result && result.id) {
+        // Navigate to the created note detail
+        navigate(`/notes/${result.id}`, { replace: true });
       } else {
-        await save(payload);
+        // After update, go back to list
         navigate('/', { replace: true });
       }
     } catch (e) {
-      // Prefer backend error message if available in our thrown Error text
+      // Prefer backend error message if available
       const msg = e?.message || 'Failed to save note.';
       setServerError(msg);
     } finally {
